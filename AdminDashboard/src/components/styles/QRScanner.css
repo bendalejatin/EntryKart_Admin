@@ -1,0 +1,61 @@
+.qr-scanner {
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #f7f7f7;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    text-align: center;
+  }
+  
+  .qr-scanner h2 {
+    color: #333;
+    margin-bottom: 20px;
+  }
+  
+  .qr-scanner form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .qr-scanner input[type="text"] {
+    width: 80%;
+    padding: 8px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  .qr-scanner button {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+  
+  .qr-scanner button:hover {
+    background-color: #0056b3;
+  }
+  
+  .coupon-details {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-align: left;
+  }
+  
+  .coupon-details h3 {
+    margin-top: 0;
+    text-align: center;
+  }
+  
+  .coupon-details p {
+    margin: 8px 0;
+  }
+  
