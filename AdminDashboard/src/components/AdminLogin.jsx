@@ -3,8 +3,8 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "./styles/Auth.css";
 
-const BASE_URL = "http://localhost:5000"; // Adjust this to your backend URL
-//const BASE_URL = "https://backend-clr8.onrender.com" ; // deployment url
+//const BASE_URL = "http://localhost:5000"; // Adjust this to your backend URL
+const BASE_URL = "https://dec-entrykart-backend.onrender.com" ; // deployment url
 
 const AdminLogin = () => {
   const [email, setEmail] = useState("");

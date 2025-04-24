@@ -4,8 +4,8 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "../components/styles/EntryPermissionForm.css";
 
-const BASE_URL = "http://localhost:5000"; // Adjust this to your backend URL
-// const BASE_URL = "https://backend-clr8.onrender.com"; // Uncomment for deployment
+//const BASE_URL = "http://localhost:5000"; // Adjust this to your backend URL
+const BASE_URL = "https://dec-entrykart-backend.onrender.com" ; // deployment url
 
 const EntryPermissionForm = () => {
   const [entries, setEntries] = useState([]);

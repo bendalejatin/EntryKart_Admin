@@ -3,8 +3,8 @@ import { useLocation } from "react-router-dom";
 import axios from "axios";
 import "./styles/QRScanner.css";
 
-const BASE_URL = "http://localhost:5000"; // Adjust this to your backend URL
-//const BASE_URL = "https://backend-clr8.onrender.com" ; // deployment url
+//const BASE_URL = "http://localhost:5000"; // Adjust this to your backend URL
+const BASE_URL = "https://dec-entrykart-backend.onrender.com" ; // deployment url
 
 const QRScanner = () => {
   const [couponDetails, setCouponDetails] = useState(null);
