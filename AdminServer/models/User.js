@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema({
 
 module.exports = mongoose.model("User", userSchema);
 
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 userSchema.pre('save', async function (next) {
   if (this.isModified('password') && this.password) {
