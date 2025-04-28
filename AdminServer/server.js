@@ -18,11 +18,6 @@ const Admin = require("./models/Admin");
 
 const app = express();
 
-// In server.js or app.js
-app.get('/health', (req, res) => {
-  res.status(200).send('Server is healthy');
-});
-
 // Middleware
 app.use(cors());
 app.use(bodyParser.json({ limit: "5mb" })); // Increased limit for large base64 images
@@ -38,6 +33,11 @@ app.use("/api/broadcast", broadcastRoutes);
 app.use("/api/flats", flatOwnerRoutes);
 app.use("/api/entries", entryRoutes);
 app.use("/api/maintenance", maintenanceRoutes);
+
+// In server.js or app.js
+app.get('/health', (req, res) => {
+  res.status(200).send('Server is healthy');
+});
 
 app.use((req, res) => {
   res.status(404).send("Route not found");
