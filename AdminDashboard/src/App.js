@@ -39,6 +39,31 @@ const App = () => {
     setIsLoggedIn(!!token);
   }, []);
 
+  const [serverReady, setServerReady] = useState(false);
+
+  useEffect(() => {
+    const checkServer = async () => {
+      try {
+        const res = await fetch('https://dec-entrykart-backend.onrender.com/health');
+        if (res.ok) {
+          setServerReady(true);
+        }
+      } catch (err) {
+        console.log('Server not ready yet...');
+        setTimeout(checkServer, 2000); // retry every 2 seconds
+      }
+    };
+    checkServer();
+  }, []);
+
+  if (!serverReady) {
+    return (
+      <div style={{ textAlign: 'center', marginTop: '50px' }}>
+        <h2>Starting server... Please wait 🔥</h2>
+      </div>
+    );
+  }
+
   return (
     <Router>
       {isLoggedIn && (

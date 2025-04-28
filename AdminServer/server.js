@@ -83,5 +83,10 @@ app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
+// In server.js or app.js
+app.get('/health', (req, res) => {
+  res.status(200).send('Server is healthy');
+});
+
 // Start server
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
