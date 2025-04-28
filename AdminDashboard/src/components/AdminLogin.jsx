@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom";
 import "./styles/Auth.css";
 
 //const BASE_URL = "http://localhost:5000"; // Adjust this to your backend URL
@@ -9,7 +9,7 @@ const BASE_URL = "https://dec-entrykart-backend.onrender.com" ; // deployment ur
 const AdminLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();

@@ -38,6 +38,7 @@ const UserManagement = () => {
       .then((res) => res.json())
       .then((data) => setUserData(data))
       .catch((err) => console.error("Error fetching users:", err));
+      // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -45,6 +46,7 @@ const UserManagement = () => {
       fetchUsers();
       fetchSocieties();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminEmail]);
 
   const fetchUsers = async () => {

@@ -41,6 +41,7 @@ const CouponManagement = () => {
     fetchEvents();
     fetchUsers();
     fetchCoupons();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchSocieties = async () => {

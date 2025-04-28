@@ -32,6 +32,7 @@ const EntryPermissionForm = () => {
     fetchSocieties();
     fetchUsers();
     checkExpiringPermissions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchEntries = async () => {

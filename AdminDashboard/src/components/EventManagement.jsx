@@ -27,6 +27,7 @@ const EventManagement = () => {
   useEffect(() => {
     fetchEvents();
     fetchSocieties();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchEvents = async () => {

@@ -46,6 +46,7 @@ const BroadcastMessage = () => {
   // Fetch broadcast messages (filter by adminEmail)
   useEffect(() => {
     fetchBroadcasts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminEmail]);
 
   const fetchBroadcasts = () => {
