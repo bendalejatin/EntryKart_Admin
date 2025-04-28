@@ -100,6 +100,8 @@ const AdminProfile = () => {
   // Handle Logout
   const handleLogout = () => {
     localStorage.removeItem("adminEmail");
+    localStorage.removeItem("adminToken");
+    alert("🔒 You have been logged out.");
     window.location.href = "/admin/login";
   };
 

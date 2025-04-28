@@ -2,17 +2,22 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./styles/SocietyManagement.css";
 
-//const BASE_URL = "http://localhost:5000"; // Adjust this to your backend URL
-const BASE_URL = "https://dec-entrykart-backend.onrender.com" ; // deployment url
+const BASE_URL = "http://localhost:5000"; // Adjust this to your backend URL
+//const BASE_URL = "https://backend-clr8.onrender.com"; // deployment url
 
 const SocietyManagement = () => {
   const [societies, setSocieties] = useState([]);
   const [newSociety, setNewSociety] = useState({
     name: "",
     location: "",
-    totalFlats: "",
+    societyType: "", // No default selection
+    blocks: "",
+    flatsPerFloor: "",
+    floorsPerBlock: "",
+    totalHouses: "",
   });
   const [editingSociety, setEditingSociety] = useState(null);
+  const [expandedFlats, setExpandedFlats] = useState({}); // Track which societies' flats are expanded
 
   useEffect(() => {
     fetchSocieties();
@@ -28,6 +33,7 @@ const SocietyManagement = () => {
       setSocieties(response.data);
     } catch (error) {
       console.error("Error fetching societies:", error);
+      alert(`❌ Error fetching societies: ${error.message}`);
     }
   };
 
@@ -37,8 +43,19 @@ const SocietyManagement = () => {
 
   // Create or update society
   const addSociety = async () => {
-    if (!newSociety.name || !newSociety.location || !newSociety.totalFlats) {
-      alert("Please fill all fields.");
+    if (!newSociety.name || !newSociety.location || !newSociety.societyType) {
+      alert("Please fill name, location, and society type.");
+      return;
+    }
+    if (newSociety.societyType === "RowHouse" && !newSociety.totalHouses) {
+      alert("Please fill total houses for RowHouse.");
+      return;
+    }
+    if (
+      newSociety.societyType === "Flat" &&
+      (!newSociety.blocks || !newSociety.flatsPerFloor || !newSociety.floorsPerBlock)
+    ) {
+      alert("Please fill blocks, flats per floor, and floors per block for Flat.");
       return;
     }
     try {
@@ -49,13 +66,19 @@ const SocietyManagement = () => {
       }
       let response;
       if (editingSociety) {
-        // Assuming your backend supports updating via PUT
         response = await axios.put(
           `${BASE_URL}/api/societies/${editingSociety._id}`,
           {
             name: newSociety.name,
             location: newSociety.location,
-            totalFlats: newSociety.totalFlats,
+            societyType: newSociety.societyType,
+            blocks: newSociety.societyType === "Flat" ? newSociety.blocks : undefined,
+            flatsPerFloor:
+              newSociety.societyType === "Flat" ? parseInt(newSociety.flatsPerFloor, 10) : undefined,
+            floorsPerBlock:
+              newSociety.societyType === "Flat" ? parseInt(newSociety.floorsPerBlock, 10) : undefined,
+            totalHouses:
+              newSociety.societyType === "RowHouse" ? parseInt(newSociety.totalHouses, 10) : undefined,
             adminEmail,
           }
         );
@@ -64,7 +87,14 @@ const SocietyManagement = () => {
         response = await axios.post(`${BASE_URL}/api/societies`, {
           name: newSociety.name,
           location: newSociety.location,
-          totalFlats: newSociety.totalFlats,
+          societyType: newSociety.societyType,
+          blocks: newSociety.societyType === "Flat" ? newSociety.blocks : undefined,
+          flatsPerFloor:
+            newSociety.societyType === "Flat" ? parseInt(newSociety.flatsPerFloor, 10) : undefined,
+          floorsPerBlock:
+            newSociety.societyType === "Flat" ? parseInt(newSociety.floorsPerBlock, 10) : undefined,
+          totalHouses:
+            newSociety.societyType === "RowHouse" ? parseInt(newSociety.totalHouses, 10) : undefined,
           adminEmail,
         });
         alert("✅ Society added successfully!");
@@ -81,7 +111,7 @@ const SocietyManagement = () => {
     }
   };
 
-  // Delete society by id – note the use of type="button" on the button element.
+  // Delete society by id
   const handleDeleteSociety = async (id) => {
     console.log("Deleting society with id:", id);
     const confirmDelete = window.confirm(
@@ -89,9 +119,7 @@ const SocietyManagement = () => {
     );
     if (!confirmDelete) return;
     try {
-      // The DELETE URL must match your backend route.
       await axios.delete(`${BASE_URL}/api/societies/${id}`);
-      // Remove the deleted society from local state.
       setSocieties((prev) => prev.filter((society) => society._id !== id));
       alert("✅ Society deleted successfully!");
     } catch (error) {
@@ -109,13 +137,33 @@ const SocietyManagement = () => {
     setNewSociety({
       name: society.name,
       location: society.location,
-      totalFlats: society.flats.length.toString(),
+      societyType: society.societyType,
+      blocks: society.blocks ? society.blocks.join(", ") : "",
+      flatsPerFloor: society.flatsPerFloor ? society.flatsPerFloor.toString() : "",
+      floorsPerBlock: society.floorsPerBlock ? society.floorsPerBlock.toString() : "",
+      totalHouses: society.totalHouses ? society.totalHouses.toString() : "",
     });
   };
 
   const resetForm = () => {
-    setNewSociety({ name: "", location: "", totalFlats: "" });
+    setNewSociety({
+      name: "",
+      location: "",
+      societyType: "",
+      blocks: "",
+      flatsPerFloor: "",
+      floorsPerBlock: "",
+      totalHouses: "",
+    });
     setEditingSociety(null);
+  };
+
+  // Toggle flats display for a society
+  const toggleFlats = (societyId) => {
+    setExpandedFlats((prev) => ({
+      ...prev,
+      [societyId]: !prev[societyId],
+    }));
   };
 
   return (
@@ -136,13 +184,49 @@ const SocietyManagement = () => {
           value={newSociety.location}
           onChange={handleChange}
         />
-        <input
-          type="number"
-          name="totalFlats"
-          placeholder="Total Flats"
-          value={newSociety.totalFlats}
+        <select
+          name="societyType"
+          value={newSociety.societyType}
           onChange={handleChange}
-        />
+        >
+          <option value="" disabled>Select Society Type</option>
+          <option value="Flat">Flat</option>
+          <option value="RowHouse">RowHouse</option>
+        </select>
+        {newSociety.societyType === "Flat" && (
+          <>
+            <input
+              type="text"
+              name="blocks"
+              placeholder="Blocks (e.g., A, B, C)"
+              value={newSociety.blocks}
+              onChange={handleChange}
+            />
+            <input
+              type="number"
+              name="flatsPerFloor"
+              placeholder="Flats per Floor"
+              value={newSociety.flatsPerFloor}
+              onChange={handleChange}
+            />
+            <input
+              type="number"
+              name="floorsPerBlock"
+              placeholder="Floors per Block"
+              value={newSociety.floorsPerBlock}
+              onChange={handleChange}
+            />
+          </>
+        )}
+        {newSociety.societyType === "RowHouse" && (
+          <input
+            type="number"
+            name="totalHouses"
+            placeholder="Total Houses"
+            value={newSociety.totalHouses}
+            onChange={handleChange}
+          />
+        )}
         <button onClick={addSociety}>
           {editingSociety ? "Update Society" : "Add Society"}
         </button>
@@ -151,34 +235,67 @@ const SocietyManagement = () => {
 
       <div className="society-list">
         {societies.length > 0 ? (
-          societies.map((society) => (
-            <div key={society._id} className="society-card">
-              <h3>
-                <strong>Society:</strong> {society.name}
-              </h3>
-              <p>
-                <strong>Location:</strong> {society.location}
-              </p>
-              <p>
-                <strong>Total Flats:</strong> {society.flats.length}
-              </p>
-              <div className="button-container">
-                <button
-                  className="edit-btn"
-                  onClick={() => handleEditSociety(society)}
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  className="delete-btn"
-                  onClick={() => handleDeleteSociety(society._id)}
-                >
-                  Delete
-                </button>
+          societies.map((society) => {
+            const isExpanded = expandedFlats[society._id];
+            const displayedFlats = isExpanded
+              ? society.flats
+              : society.flats.slice(0, 5); // Show first 5 flats by default
+            return (
+              <div key={society._id} className="society-card">
+                <h3><strong>Society:</strong> {society.name}</h3>
+                <p><strong>Location:</strong> {society.location}</p>
+                <p><strong>Society Type:</strong> {society.societyType}</p>
+                {society.societyType === "Flat" && (
+                  <>
+                    <p><strong>Blocks:</strong> {society.blocks?.join(", ") || "N/A"}</p>
+                    <p><strong>Flats per Floor:</strong> {society.flatsPerFloor || "N/A"}</p>
+                    <p><strong>Floors per Block:</strong> {society.floorsPerBlock || "N/A"}</p>
+                  </>
+                )}
+                {society.societyType === "RowHouse" && (
+                  <p><strong>Total Houses:</strong> {society.totalHouses || "N/A"}</p>
+                )}
+                <p>
+                  <strong>{society.societyType === "RowHouse" ? "Houses" : "Flats"}:</strong>{" "}
+                  {displayedFlats.join(", ")}
+                  {society.flats.length > 5 && !isExpanded && (
+                    <span>
+                      {" ... "}
+                      <button
+                        className="more-btn"
+                        onClick={() => toggleFlats(society._id)}
+                      >
+                        More
+                      </button>
+                    </span>
+                  )}
+                  {isExpanded && (
+                    <button
+                      className="less-btn"
+                      onClick={() => toggleFlats(society._id)}
+                    >
+                      Show Less
+                    </button>
+                  )}
+                </p>
+                <div className="button-container">
+                  <button
+                    className="edit-btn"
+                    onClick={() => handleEditSociety(society)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="delete-btn"
+                    onClick={() => handleDeleteSociety(society._id)}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         ) : (
           <p>No societies available.</p>
         )}
