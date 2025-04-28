@@ -18,6 +18,11 @@ const Admin = require("./models/Admin");
 
 const app = express();
 
+// In server.js or app.js
+app.get('/health', (req, res) => {
+  res.status(200).send('Server is healthy');
+});
+
 // Middleware
 app.use(cors());
 app.use(bodyParser.json({ limit: "5mb" })); // Increased limit for large base64 images
@@ -81,11 +86,6 @@ async function createSuperAdmin() {
 // Default route
 app.get("/", (req, res) => {
   res.send("API is running...");
-});
-
-// In server.js or app.js
-app.get('/health', (req, res) => {
-  res.status(200).send('Server is healthy');
 });
 
 // Start server
