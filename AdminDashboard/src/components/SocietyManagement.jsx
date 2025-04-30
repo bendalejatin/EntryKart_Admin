@@ -247,9 +247,9 @@ const SocietyManagement = () => {
                 <p><strong>Society Type:</strong> {society.societyType}</p>
                 {society.societyType === "Flat" && (
                   <>
-                    <p><strong>Blocks:</strong> {society.blocks?.join(", ") || "N/A"}</p>
+                    <p><strong>Towers:</strong> {society.blocks?.join(", ") || "N/A"}</p>
                     <p><strong>Flats per Floor:</strong> {society.flatsPerFloor || "N/A"}</p>
-                    <p><strong>Floors per Block:</strong> {society.floorsPerBlock || "N/A"}</p>
+                    <p><strong>Floors per Tower:</strong> {society.floorsPerBlock || "N/A"}</p>
                   </>
                 )}
                 {society.societyType === "RowHouse" && (
