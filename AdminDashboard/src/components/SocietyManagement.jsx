@@ -197,7 +197,7 @@ const SocietyManagement = () => {
           <>
             <input
               type="text"
-              name="towers"
+              name="blocks"
               placeholder="Towers (e.g., A, B, C)"
               value={newSociety.blocks}
               onChange={handleChange}
@@ -211,7 +211,7 @@ const SocietyManagement = () => {
             />
             <input
               type="number"
-              name="floorsPerTower"
+              name="floorsPerBlock"
               placeholder="Floors per Tower"
               value={newSociety.floorsPerBlock}
               onChange={handleChange}
