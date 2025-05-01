@@ -5,6 +5,9 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const router = express.Router();
 
+//const BASE_URL = "http://localhost:5000"; // Adjust this to your backend URL
+const BASE_URL = "https://dec-entrykart-backend.onrender.com" ; // deployment url
+
 const SECRET_KEY = "DEC_GAM_TEST"; // Change this to a secure key
 
 // Signup – if email is "dec@gmail.com", set role to superadmin.
@@ -164,7 +167,7 @@ router.post("/forgot-password", async (req, res) => {
     const resetToken = jwt.sign({ id: admin._id }, SECRET_KEY, { expiresIn: "15m" });
 
     // Send Reset Email
-    const resetLink = `http://localhost:3000/reset-password/${resetToken}`;
+    const resetLink = `${BASE_URL}/reset-password/${resetToken}`;
     const mailOptions = {
       from: "jbsecond2004@gmail.com",
       to: admin.email,
