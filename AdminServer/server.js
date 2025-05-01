@@ -14,6 +14,7 @@ const broadcastRoutes = require("./routes/broadcastRoutes");
 const flatOwnerRoutes = require("./routes/flatOwnerRoutes");
 const entryRoutes = require("./routes/entryRoutes");
 const maintenanceRoutes = require("./routes/maintenanceRoutes");
+const guardRoutes = require("./routes/guardRoutes");
 const Admin = require("./models/Admin");
 
 const app = express();
@@ -33,6 +34,7 @@ app.use("/api/broadcast", broadcastRoutes);
 app.use("/api/flats", flatOwnerRoutes);
 app.use("/api/entries", entryRoutes);
 app.use("/api/maintenance", maintenanceRoutes);
+app.use("/api/guard", guardRoutes);
 
 // In server.js or app.js
 app.get('/health', (req, res) => {
