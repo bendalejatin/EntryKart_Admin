@@ -5,8 +5,8 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const router = express.Router();
 
-//const BASE_URL = "http://localhost:5000"; // Adjust this to your backend URL
-const BASE_URL = "https://dec-entrykart-backend.onrender.com" ; // deployment url
+const BASE_URL = "http://localhost:5000"; // Adjust this to your backend URL
+// const BASE_URL = "https://dec-entrykart-backend.onrender.com" ; // deployment url
 
 const SECRET_KEY = "DEC_GAM_TEST"; // Change this to a secure key
 
