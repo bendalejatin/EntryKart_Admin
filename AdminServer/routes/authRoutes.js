@@ -5,10 +5,7 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const router = express.Router();
 
-const BASE_URL = "http://localhost:5000"; // Adjust this to your backend URL
-// const BASE_URL = "https://dec-entrykart-backend.onrender.com" ; // deployment url
-
-const SECRET_KEY = "DEC_GAM_TEST"; // Change this to a secure key
+const SECRET_KEY = "DEC-GAMING"; // Change this to a secure key
 
 // Signup – if email is "dec@gmail.com", set role to superadmin.
 router.post("/signup", async (req, res) => {
@@ -64,19 +61,19 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ✅ Middleware to verify JWT token
-const verifyToken = (req, res, next) => {
-  const token = req.header("Authorization");
-  if (!token) return res.status(403).json({ message: "Access denied. No token provided." });
+// // ✅ Middleware to verify JWT token
+// const verifyToken = (req, res, next) => {
+//   const token = req.header("Authorization");
+//   if (!token) return res.status(403).json({ message: "Access denied. No token provided." });
 
-  try {
-    const verified = jwt.verify(token.split(" ")[1], SECRET_KEY);
-    req.admin = verified;
-    next();
-  } catch (error) {
-    res.status(401).json({ message: "Invalid token. Please log in again." });
-  }
-};
+//   try {
+//     const verified = jwt.verify(token.split(" ")[1], SECRET_KEY);
+//     req.admin = verified;
+//     next();
+//   } catch (error) {
+//     res.status(401).json({ message: "Invalid token. Please log in again." });
+//   }
+// };
 
 // Get Profile – fetch admin info by email
 router.get("/profile", async (req, res) => {
@@ -92,7 +89,6 @@ router.get("/profile", async (req, res) => {
   }
 });
 
-// Update Profile
 // Update Profile
 router.put("/update", async (req, res) => {
   try {
@@ -167,7 +163,7 @@ router.post("/forgot-password", async (req, res) => {
     const resetToken = jwt.sign({ id: admin._id }, SECRET_KEY, { expiresIn: "15m" });
 
     // Send Reset Email
-    const resetLink = `${BASE_URL}/reset-password/${resetToken}`;
+    const resetLink = `http://localhost:3000/reset-password/${resetToken}`;
     const mailOptions = {
       from: "jbsecond2004@gmail.com",
       to: admin.email,
@@ -203,6 +199,7 @@ router.post("/reset-password", async (req, res) => {
     res.status(500).json({ message: "Invalid or expired token", error: error.message });
   }
 });
+
 
 
 module.exports = router;

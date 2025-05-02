@@ -33,7 +33,9 @@ const securityGuardSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
-  }
+  },
+  resetPasswordToken: { type: String },
+  resetPasswordExpire: { type: Date },
 });
 
 // Hash password before saving
