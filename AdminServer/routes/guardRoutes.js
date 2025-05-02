@@ -6,6 +6,9 @@ const nodemailer = require("nodemailer");
 const mongoose = require("mongoose");
 const Guard = require("../models/SecurityGuard");
 
+// const Frontend_URL_Guard = "https://localhost:3000/"; // Change this to your frontend URL
+const Frontend_URL_Guard = "https://security-module-chi.vercel.app/"; // Change this to your frontend URL
+
 // Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
@@ -131,7 +134,7 @@ router.post("/forgot-password", async (req, res) => {
       Date.now() + RESET_TOKEN_EXPIRY_MINUTES * 60 * 1000; // 15 min
     await guard.save();
 
-    const resetUrl = `http://localhost:3000/security/reset-password/${resetToken}`; // Frontend URL
+    const resetUrl = `${Frontend_URL_Guard}/security/reset-password/${resetToken}`; // Frontend URL
 
     await transporter.sendMail({
       from: "your_email@gmail.com",

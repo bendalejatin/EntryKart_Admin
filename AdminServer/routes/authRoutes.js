@@ -6,6 +6,8 @@ const nodemailer = require("nodemailer");
 const router = express.Router();
 
 const SECRET_KEY = "DEC-GAMING"; // Change this to a secure key
+// const Frontend_URL = "http://localhost:3000"; // Change this to your frontend URL
+const Frontend_URL = "https://entry-kart-admin.vercel.app/"; // Change this to your frontend URL
 
 // Signup – if email is "dec@gmail.com", set role to superadmin.
 router.post("/signup", async (req, res) => {
@@ -163,7 +165,7 @@ router.post("/forgot-password", async (req, res) => {
     const resetToken = jwt.sign({ id: admin._id }, SECRET_KEY, { expiresIn: "15m" });
 
     // Send Reset Email
-    const resetLink = `http://localhost:3000/reset-password/${resetToken}`;
+    const resetLink = `${Frontend_URL}/reset-password/${resetToken}`;
     const mailOptions = {
       from: "jbsecond2004@gmail.com",
       to: admin.email,
