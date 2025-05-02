@@ -27,6 +27,9 @@ const AdminForgotPassword = () => {
         <button type="submit">Send Reset Link</button>
       </form>
       <p>{message}</p>
+      <p>
+        <a href="/admin/login">Back to Login</a>
+      </p>
     </div>
   );
 };
