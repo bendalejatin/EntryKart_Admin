@@ -1,211 +1,184 @@
 const express = require("express");
-const router = express.Router();
-const Event = require("../models/Event");
+const Entry = require("../models/Entry");
 const Admin = require("../models/Admin");
+const router = express.Router();
+const cron = require("node-cron");
 
-// Create Event
-router.post("/", async (req, res) => {
-  try {
-    // console.log("POST /api/events received with data:", req.body);
-    // console.log("Payload size:", JSON.stringify(req.body).length / 1024, "KB");
+// Helper: Returns a filter based on the admin's role
+const getAdminAndFilterEntries = async (adminEmail) => {
+  if (!adminEmail) throw new Error("Admin email is required");
+  const admin = await Admin.findOne({ email: adminEmail });
+  if (!admin) throw new Error("Admin not found");
+  return admin.role === "superadmin" ? {} : { adminEmail };
+};
 
-    const {
-      title,
-      description,
-      date,
-      time,
-      location,
-      image,
-      adminEmail,
-      societyName,
-    } = req.body;
-
-    if (!adminEmail || !societyName) {
-      console.error("Missing adminEmail/societyName");
-      return res
-        .status(400)
-        .json({ message: "Admin email and society name are required" });
-    }
-
-    if (!title || !description || !date || !time || !location) {
-      console.error("Missing required fields:", {
-        title,
-        description,
-        date,
-        time,
-        location,
-      });
-      return res
-        .status(400)
-        .json({
-          message:
-            "All required fields (title, description, date, time, location) must be provided",
-        });
-    }
-
-    const event = new Event({
-      title,
-      description,
-      date: new Date(date), // Ensure date is stored as Date object
-      time,
-      location,
-      image,
-      adminEmail,
-      societyName: societyName.trim().toLowerCase(), // Normalize
-    });
-
-    await event.save();
-    // console.log(`Created event ${title} with time ${time} for society ${societyName}`);
-    res.status(201).json(event);
-  } catch (error) {
-    console.error("Error creating event:", error.message);
-    if (error.message.includes("PayloadTooLargeError")) {
-      return res
-        .status(413)
-        .json({
-          message: "Payload too large. Image size must be less than 5MB.",
-        });
-    }
-    res
-      .status(500)
-      .json({ message: `Failed to create event: ${error.message}` });
-  }
-});
-
-// Get Events
-router.get("/", async (req, res) => {
-  try {
-    const { email: adminEmail, societyName } = req.query;
-    if (!adminEmail && !societyName) {
-      console.error("Missing adminEmail or societyName in query");
-      return res
-        .status(400)
-        .json({ message: "Admin email or society name is required" });
-    }
-
-    let filter = {};
-    if (adminEmail) {
-      const admin = await Admin.findOne({ email: adminEmail });
-      if (!admin || admin.role !== "superadmin") {
-        filter.adminEmail = adminEmail;
-      }
-    }
-    if (societyName) {
-      filter.societyName = new RegExp(
-        `^${societyName.trim().toLowerCase()}$`,
-        "i"
-      ); // Normalize and case-insensitive
-    }
-
-    const events = await Event.find(filter).sort({ date: 1 }); // Sort by date ascending
-    // console.log(`Fetched ${events.length} events for society ${societyName}`);
-    res.json(events);
-  } catch (error) {
-    console.error("Error fetching events:", error.message);
-    res
-      .status(500)
-      .json({ message: `Failed to fetch events: ${error.message}` });
-  }
-});
-
-// Count Events
+// GET Entry Count
 router.get("/count", async (req, res) => {
   try {
-    const adminEmail = req.query.email;
-    if (!adminEmail) {
-      console.error("Missing adminEmail in query");
-      return res.status(400).json({ message: "Admin email is required" });
+    const { email } = req.query;
+    if (!email) {
+      return res.status(400).json({ error: "Admin email is required" });
     }
 
-    const admin = await Admin.findOne({ email: adminEmail });
-    const count =
-      admin && admin.role === "superadmin"
-        ? await Event.countDocuments()
-        : await Event.countDocuments({ adminEmail });
+    const admin = await Admin.findOne({ email });
+    let filter = {};
+    if (admin && admin.role !== "superadmin") {
+      filter = { adminEmail: email };
+    }
 
-    // console.log(`Counted ${count} events for admin ${adminEmail}`);
+    const count = await Entry.countDocuments(filter);
     res.json({ count });
   } catch (error) {
-    console.error("Error counting events:", error.message);
-    res
-      .status(500)
-      .json({ message: `Failed to count events: ${error.message}` });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Delete Event
-router.delete("/:id", async (req, res) => {
+// Create Entry
+router.post("/", async (req, res) => {
   try {
-    // console.log(`DELETE /api/events/${req.params.id} received`);
-    const deletedEvent = await Event.findByIdAndDelete(req.params.id);
+    const {
+      name,
+      flatNumber,
+      societyId,
+      visitorType,
+      status,
+      dateTime,
+      description,
+      additionalDateTime,
+      adminEmail,
+      email, // User's email
+    } = req.body;
 
-    if (!deletedEvent) {
-      console.error(`Event with ID ${req.params.id} not found`);
-      return res.status(404).json({ message: "Event not found" });
+    if (!adminEmail || !societyId || !status) {
+      return res
+        .status(400)
+        .json({ error: "Admin email, society ID, and status are required" });
     }
 
-    // console.log(`Deleted event ${deletedEvent.title}`);
-    res.json({ message: "Event deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting event:", error.message);
-    res
-      .status(500)
-      .json({ message: `Failed to delete event: ${error.message}` });
-  }
-});
-
-// Update Event
-router.put("/:id", async (req, res) => {
-  try {
-    // console.log(`PUT /api/events/${req.params.id} received with data:`, req.body);
-    // console.log("Payload size:", JSON.stringify(req.body).length / 1024, "KB");
-
-    const { title, description, date, time, location, image, societyName } =
-      req.body;
-
-    if (!title || !description || !date || !time || !location || !societyName) {
-      console.error("Missing required fields for update");
+    const validStatuses = ["pending", "allow", "deny"];
+    if (!validStatuses.includes(status)) {
       return res
         .status(400)
         .json({
-          message:
-            "All fields (title, description, date, time, location, societyName) must be provided",
+          error: "Invalid status value. Must be pending, allow, or deny",
         });
     }
 
-    const updatedEvent = await Event.findByIdAndUpdate(
-      req.params.id,
-      {
-        title,
-        description,
-        date: new Date(date), // Ensure date is stored as Date object
-        time,
-        location,
-        image,
-        societyName: societyName.trim().toLowerCase(), // Normalize
-      },
-      { new: true }
-    );
+    const expirationDateTime = new Date(dateTime);
+    expirationDateTime.setDate(expirationDateTime.getDate() + 7);
 
-    if (!updatedEvent) {
-      console.error(`Event with ID ${req.params.id} not found`);
-      return res.status(404).json({ message: "Event not found" });
-    }
+    const newEntry = new Entry({
+      name,
+      flatNumber,
+      societyId,
+      visitorType,
+      status,
+      dateTime: new Date(dateTime), // Convert to Date
+      description,
+      additionalDateTime: new Date(additionalDateTime), // Convert to Date
+      expirationDateTime,
+      adminEmail,
+      email, // Store user's email
+    });
 
-    // console.log(`Updated event ${updatedEvent.title} for society ${societyName}`);
-    res.json(updatedEvent);
+    await newEntry.save();
+    res.status(201).json(newEntry);
   } catch (error) {
-    console.error("Error updating event:", error.message);
-    if (error.message.includes("PayloadTooLargeError")) {
-      return res
-        .status(413)
-        .json({
-          message: "Payload too large. Image size must be less than 5MB.",
-        });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get All Entries (filtering by name, flatNumber, date, status, userEmail, and admin ownership)
+router.get("/", async (req, res) => {
+  try {
+    const { name, flatNumber, date, status, email, userEmail } = req.query;
+    let query = {};
+
+    if (name) query.name = new RegExp(name, "i");
+    if (flatNumber) query.flatNumber = new RegExp(flatNumber, "i");
+    if (date) query.dateTime = { $regex: date, $options: "i" };
+    if (status) query.status = status;
+    if (userEmail) query.email = userEmail; // Filter by user's email
+    if (email) {
+      // Filter by adminEmail
+      const adminFilter = await getAdminAndFilterEntries(email);
+      query = { ...query, ...adminFilter };
     }
-    res
-      .status(500)
-      .json({ message: `Failed to update event: ${error.message}` });
+
+    const entries = await Entry.find(query).populate("societyId", "name");
+    res.json(entries);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update Entry
+router.put("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    if (status) {
+      const validStatuses = ["pending", "allow", "deny"];
+      if (!validStatuses.includes(status)) {
+        return res
+          .status(400)
+          .json({
+            error: "Invalid status value. Must be pending, allow, or deny",
+          });
+    }
+    }
+    const updatedEntry = await Entry.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true, runValidators: true }
+    );
+    if (!updatedEntry) {
+      return res.status(404).json({ error: "Entry not found" });
+    }
+    res.status(200).json(updatedEntry);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete Entry
+router.delete("/:id", async (req, res) => {
+  try {
+    const deletedEntry = await Entry.findByIdAndDelete(req.params.id);
+    if (!deletedEntry) {
+      return res.status(404).json({ error: "Entry not found" });
+    }
+    res.json({ message: "Entry deleted" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Cron Job: Mark entries as expired (runs daily at midnight)
+cron.schedule("0 0 * * *", async () => {
+  const now = new Date();
+  await Entry.updateMany(
+    { expirationDateTime: { $lt: now } },
+    { expired: true }
+  );
+  console.log("Expired permissions updated");
+});
+
+// Get Expiring Soon Entries (notify 3 days before expiry)
+router.get("/expiring-soon", async (req, res) => {
+  try {
+    const now = new Date();
+    const upcomingExpiration = new Date();
+    upcomingExpiration.setDate(now.getDate() + 3);
+
+    const expiringEntries = await Entry.find({
+      expirationDateTime: { $gte: now, $lte: upcomingExpiration },
+      expired: false,
+    });
+
+    res.json(expiringEntries);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
