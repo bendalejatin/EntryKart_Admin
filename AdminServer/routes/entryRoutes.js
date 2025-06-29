@@ -73,9 +73,9 @@ router.post("/", async (req, res) => {
       societyId,
       visitorType,
       status,
-      dateTime,
+      dateTime: new Date(dateTime), // Convert to Date
       description,
-      additionalDateTime,
+      additionalDateTime: new Date(additionalDateTime), // Convert to Date
       expirationDateTime,
       adminEmail,
       email, // Store user's email
@@ -115,6 +115,7 @@ router.get("/", async (req, res) => {
 // Update Entry
 router.put("/:id", async (req, res) => {
   try {
+    const { id } = req.params;
     const { status } = req.body;
     if (status) {
       const validStatuses = ["pending", "allow", "deny"];
@@ -124,17 +125,17 @@ router.put("/:id", async (req, res) => {
           .json({
             error: "Invalid status value. Must be pending, allow, or deny",
           });
-      }
+    }
     }
     const updatedEntry = await Entry.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
+      id,
+      { status },
+      { new: true, runValidators: true }
     );
     if (!updatedEntry) {
       return res.status(404).json({ error: "Entry not found" });
     }
-    res.json(updatedEntry);
+    res.status(200).json(updatedEntry);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -160,7 +161,7 @@ cron.schedule("0 0 * * *", async () => {
     { expirationDateTime: { $lt: now } },
     { expired: true }
   );
-  // console.log('Expired permissions updated');
+  console.log("Expired permissions updated");
 });
 
 // Get Expiring Soon Entries (notify 3 days before expiry)
