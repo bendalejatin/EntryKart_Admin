@@ -70,13 +70,29 @@ router.get("/", async (req, res) => {
     const admin = await Admin.findOne({ email: adminEmail });
     let users;
     if (admin && admin.role === "superadmin") {
-      users = await User.find().populate("society");
+      users = await User.find().populate("society", "name");
     } else {
-      users = await User.find({ adminEmail }).populate("society");
+      users = await User.find({ adminEmail }).populate("society", "name");
     }
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// Get Users by Society ID – fetch users in a specific society
+router.get("/by-society/:societyId", async (req, res) => {
+  try {
+    const { societyId } = req.params;
+    const society = await Society.findById(societyId);
+    if (!society) return res.status(404).json({ message: "Society not found" });
+    const users = await User.find({ society: societyId })
+      .populate("society", "name")
+      .select("-password");
+    res.json(users);
+  } catch (error) {
+    console.error("Error fetching users by society:", error);
+    res.status(500).json({ message: "Server error while fetching users" });
   }
 });
 

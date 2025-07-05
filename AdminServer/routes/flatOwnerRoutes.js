@@ -86,7 +86,6 @@ router.get("/societies", async (req, res) => {
       }
     }
     const societies = await Society.find(filter, "name _id");
-    // console.log("Fetched societies:", societies);
     res.json(societies);
   } catch (error) {
     console.error("Error in /societies:", error.message);
@@ -101,7 +100,6 @@ router.get("/flats/:societyName", async (req, res) => {
       name: { $regex: `^${req.params.societyName}$`, $options: "i" },
     });
     if (!society) {
-      // console.log("Society not found:", req.params.societyName);
       return res.status(404).json({ message: "Society not found" });
     }
     res.json(society.flats);
@@ -118,7 +116,6 @@ router.get("/owner/:societyName/:flatNumber", async (req, res) => {
       name: { $regex: `^${req.params.societyName}$`, $options: "i" },
     });
     if (!society) {
-      // console.log("Society not found:", req.params.societyName);
       return res.status(404).json({ message: "Society not found" });
     }
     let owner = await FlatOwner.findOne({
@@ -137,17 +134,19 @@ router.get("/owner/:societyName/:flatNumber", async (req, res) => {
           contact: user.phone,
           email: user.email,
           adminEmail: user.adminEmail,
-          image: "https://via.placeholder.com/300", // Default image for user fallback
+          image: "https://via.placeholder.com/300",
           familyMembers: [],
           _id: null,
+          societyId: user.society || null, // Include societyId
         };
-        // console.log("Found User for owner:", owner);
         return res.json(owner);
       }
-      // console.log("Owner not found for society:", req.params.societyName, "flat:", req.params.flatNumber);
       return res.status(404).json({ message: "Owner not found" });
     }
-    res.json(owner);
+    res.json({
+      ...owner.toObject(),
+      societyId: society._id, // Include societyId
+    });
   } catch (error) {
     console.error("Error in /owner/:societyName/:flatNumber:", error.message);
     res.status(500).json({ message: error.message });
@@ -159,10 +158,11 @@ router.get("/owner-by-email/:email", async (req, res) => {
   try {
     const owner = await FlatOwner.findOne({ email: req.params.email });
     if (!owner) {
-      // console.log("FlatOwner not found for email:", req.params.email);
       return res.status(404).json({ message: "Owner not found" });
     }
-    // console.log("Found FlatOwner:", owner);
+    const society = await Society.findOne({
+      name: { $regex: `^${owner.societyName}$`, $options: "i" },
+    });
     res.json({
       _id: owner._id,
       societyName: owner.societyName,
@@ -173,8 +173,9 @@ router.get("/owner-by-email/:email", async (req, res) => {
       email: owner.email,
       gender: owner.gender,
       adminEmail: owner.adminEmail,
-      image: owner.image, // Include image
+      image: owner.image,
       familyMembers: owner.familyMembers,
+      societyId: society ? society._id : null, // Include societyId
     });
   } catch (error) {
     console.error("Error in /owner-by-email/:email:", error.message);
@@ -185,10 +186,11 @@ router.get("/owner-by-email/:email", async (req, res) => {
 // GET owner details by email with User fallback
 router.get("/owner-by-email-fallback/:email", async (req, res) => {
   try {
-    // console.log("Fetching owner for email:", req.params.email);
     let owner = await FlatOwner.findOne({ email: req.params.email });
     if (owner) {
-      // console.log("Found FlatOwner:", owner);
+      const society = await Society.findOne({
+        name: { $regex: `^${owner.societyName}$`, $options: "i" },
+      });
       return res.json({
         _id: owner._id,
         societyName: owner.societyName,
@@ -199,33 +201,23 @@ router.get("/owner-by-email-fallback/:email", async (req, res) => {
         email: owner.email,
         gender: owner.gender,
         adminEmail: owner.adminEmail,
-        image: owner.image, // Include image
+        image: owner.image,
         familyMembers: owner.familyMembers,
+        societyId: society ? society._id : null, // Include societyId
       });
     }
 
     const user = await User.findOne({ email: req.params.email }).populate(
-      "society"
+      "society",
+      "name"
     );
     if (user) {
-      // console.log("Found User:", user);
       if (!user.society) {
-        // console.log("User has no society reference");
-        return res.json({
-          _id: null,
-          societyName: "",
-          flatNumber: user.flatNumber || "",
-          ownerName: user.name || "",
-          profession: user.profession || "",
-          contact: user.phone || "",
-          email: user.email,
-          gender: "",
-          adminEmail: user.adminEmail || "",
-          image: "https://via.placeholder.com/300", // Default image for user fallback
-          familyMembers: [],
+        return res.status(404).json({
+          message: "User is not associated with any society. Please contact your society admin to update your profile.",
         });
       }
-      owner = {
+      return res.json({
         _id: null,
         societyName: user.society ? user.society.name.toLowerCase().trim() : "",
         flatNumber: user.flatNumber || "",
@@ -235,17 +227,15 @@ router.get("/owner-by-email-fallback/:email", async (req, res) => {
         email: user.email,
         gender: "",
         adminEmail: user.adminEmail || "",
-        image: "https://via.placeholder.com/300", // Default image for user fallback
+        image: "https://via.placeholder.com/300",
         familyMembers: [],
-      };
-      // console.log("Returning owner data:", owner);
-      return res.json(owner);
+        societyId: user.society ? user.society._id : null, // Include societyId
+      });
     }
 
-    // console.log("No owner or user found for email:", req.params.email);
     return res.status(404).json({ message: "Owner not found" });
   } catch (error) {
-    console.error("Error in owner-by-email-fallback:", error.message);
+    console.error("Error in /owner-by-email-fallback:", error.message);
     res.status(500).json({ message: error.message });
   }
 });
@@ -262,13 +252,19 @@ router.post("/owner", async (req, res) => {
       email,
       gender,
       adminEmail,
-      image, // Added image field
+      image,
     } = req.body;
     const normalizedSocietyName = societyName.toLowerCase().trim();
     let owner = await FlatOwner.findOne({
       societyName: normalizedSocietyName,
       flatNumber,
     });
+    const society = await Society.findOne({
+      name: { $regex: `^${normalizedSocietyName}$`, $options: "i" },
+    });
+    if (!society) {
+      return res.status(404).json({ message: "Society not found" });
+    }
     if (!owner) {
       owner = new FlatOwner({
         societyName: normalizedSocietyName,
@@ -279,63 +275,51 @@ router.post("/owner", async (req, res) => {
         email,
         gender,
         adminEmail,
-        image: image || "https://via.placeholder.com/300", // Use provided image or default
+        image: image || "https://via.placeholder.com/300",
         familyMembers: [],
       });
       await owner.save();
 
-      const society = await Society.findOne({
-        name: { $regex: `^${normalizedSocietyName}$`, $options: "i" },
-      });
-      if (society) {
-        let user = await User.findOne({ society: society._id, flatNumber });
-        if (user) {
-          user.name = ownerName;
-          user.email = email;
-          user.phone = contact;
-          user.profession = profession;
-          await user.save();
-        } else {
-          user = new User({
-            name: ownerName,
-            flatNumber,
-            society: society._id,
-            email,
-            phone: contact,
-            adminEmail,
-            profession,
-          });
-          await user.save();
-        }
+      let user = await User.findOne({ society: society._id, flatNumber });
+      if (user) {
+        user.name = ownerName;
+        user.email = email;
+        user.phone = contact;
+        user.profession = profession;
+        user.society = society._id; // Ensure societyId is set
+        await user.save();
       } else {
-        // console.log("Society not found for name:", normalizedSocietyName);
+        user = new User({
+          name: ownerName,
+          flatNumber,
+          society: society._id,
+          email,
+          phone: contact,
+          adminEmail,
+          profession,
+        });
+        await user.save();
       }
-      // console.log("Created FlatOwner:", owner);
-      return res.status(201).json(owner);
+      return res.status(201).json({ ...owner.toObject(), societyId: society._id });
     } else {
       owner.ownerName = ownerName;
       owner.profession = profession;
       owner.contact = contact;
       owner.email = email;
       owner.gender = gender;
-      owner.image = image || owner.image; // Update image if provided
+      owner.image = image || owner.image;
       await owner.save();
 
-      const society = await Society.findOne({
-        name: { $regex: `^${normalizedSocietyName}$`, $options: "i" },
-      });
-      if (society) {
-        let user = await User.findOne({ society: society._id, flatNumber });
-        if (user) {
-          user.name = ownerName;
-          user.email = email;
-          user.phone = contact;
-          user.profession = profession;
-          await user.save();
-        }
+      let user = await User.findOne({ society: society._id, flatNumber });
+      if (user) {
+        user.name = ownerName;
+        user.email = email;
+        user.phone = contact;
+        user.profession = profession;
+        user.society = society._id; // Ensure societyId is set
+        await user.save();
       }
-      // console.log("Updated FlatOwner:", owner);
-      return res.json(owner);
+      return res.json({ ...owner.toObject(), societyId: society._id });
     }
   } catch (error) {
     console.error("Error in /owner POST:", error.message);
@@ -354,9 +338,15 @@ router.put("/owner/:id/update", async (req, res) => {
       societyName,
       flatNumber,
       gender,
-      image, // Added image field
+      image,
     } = req.body;
     const normalizedSocietyName = societyName.toLowerCase().trim();
+    const society = await Society.findOne({
+      name: { $regex: `^${normalizedSocietyName}$`, $options: "i" },
+    });
+    if (!society) {
+      return res.status(404).json({ message: "Society not found" });
+    }
     const updatedOwner = await FlatOwner.findByIdAndUpdate(
       req.params.id,
       {
@@ -367,29 +357,23 @@ router.put("/owner/:id/update", async (req, res) => {
         gender,
         societyName: normalizedSocietyName,
         flatNumber,
-        image: image || "https://via.placeholder.com/300", // Use provided image or default
+        image: image || "https://via.placeholder.com/300",
       },
       { new: true }
     );
     if (!updatedOwner) {
-      // console.log("Owner not found for id:", req.params.id);
       return res.status(404).json({ message: "Owner not found" });
     }
-    const society = await Society.findOne({
-      name: { $regex: `^${normalizedSocietyName}$`, $options: "i" },
-    });
-    if (society) {
-      let user = await User.findOne({ society: society._id, flatNumber });
-      if (user) {
-        user.name = ownerName;
-        user.email = email;
-        user.phone = contact;
-        user.profession = profession;
-        await user.save();
-      }
+    let user = await User.findOne({ society: society._id, flatNumber });
+    if (user) {
+      user.name = ownerName;
+      user.email = email;
+      user.phone = contact;
+      user.profession = profession;
+      user.society = society._id; // Ensure societyId is set
+      await user.save();
     }
-    // console.log("Updated FlatOwner:", updatedOwner);
-    res.json(updatedOwner);
+    res.json({ ...updatedOwner.toObject(), societyId: society._id });
   } catch (error) {
     console.error("Error in /owner/:id/update:", error.message);
     res.status(500).json({ message: error.message });
@@ -401,7 +385,6 @@ router.delete("/owner/:id", async (req, res) => {
   try {
     const owner = await FlatOwner.findById(req.params.id);
     if (!owner) {
-      // console.log("Owner not found for id:", req.params.id);
       return res.status(404).json({ message: "Owner not found" });
     }
     await FlatOwner.findByIdAndDelete(req.params.id);
@@ -414,7 +397,6 @@ router.delete("/owner/:id", async (req, res) => {
         flatNumber: owner.flatNumber,
       });
     }
-    // console.log("Deleted FlatOwner:", owner);
     res.json({ message: "Owner and corresponding user deleted" });
   } catch (error) {
     console.error("Error in /owner/:id DELETE:", error.message);
@@ -428,12 +410,10 @@ router.put("/owner/:id/add-family", async (req, res) => {
     const { name, relation, age, profession, contact } = req.body;
     const owner = await FlatOwner.findById(req.params.id);
     if (!owner) {
-      // console.log("Owner not found for id:", req.params.id);
       return res.status(404).json({ message: "Owner not found" });
     }
     owner.familyMembers.push({ name, relation, age, profession, contact });
     await owner.save();
-    // console.log("Added family member to owner:", owner);
     res.json(owner);
   } catch (error) {
     console.error("Error in /owner/:id/add-family:", error.message);
@@ -447,17 +427,14 @@ router.put("/owner/:id/edit-family/:index", async (req, res) => {
     const { name, relation, age, profession, contact } = req.body;
     const owner = await FlatOwner.findById(req.params.id);
     if (!owner) {
-      // console.log("Owner not found for id:", req.params.id);
       return res.status(404).json({ message: "Owner not found" });
     }
     const index = parseInt(req.params.index);
     if (index < 0 || index >= owner.familyMembers.length) {
-      // console.log("Invalid family member index:", index);
       return res.status(400).json({ message: "Invalid family member index" });
     }
     owner.familyMembers[index] = { name, relation, age, profession, contact };
     await owner.save();
-    // console.log("Edited family member for owner:", owner);
     res.json(owner);
   } catch (error) {
     console.error("Error in /owner/:id/edit-family/:index:", error.message);
@@ -470,17 +447,14 @@ router.delete("/owner/:id/delete-family/:index", async (req, res) => {
   try {
     const owner = await FlatOwner.findById(req.params.id);
     if (!owner) {
-      // console.log("Owner not found for id:", req.params.id);
       return res.status(404).json({ message: "Owner not found" });
     }
     const index = parseInt(req.params.index);
     if (index < 0 || index >= owner.familyMembers.length) {
-      // console.log("Invalid family member index:", index);
       return res.status(400).json({ message: "Invalid family member index" });
     }
     owner.familyMembers.splice(index, 1);
     await owner.save();
-    // console.log("Deleted family member for owner:", owner);
     res.json(owner);
   } catch (error) {
     console.error("Error in /owner/:id/delete-family/:index:", error.message);
