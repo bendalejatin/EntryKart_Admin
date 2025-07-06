@@ -46,7 +46,7 @@ router.post("/", async (req, res) => {
       description,
       additionalDateTime,
       adminEmail,
-      email, // User's email
+      email,
     } = req.body;
 
     if (!adminEmail || !societyId || !status) {
@@ -73,12 +73,12 @@ router.post("/", async (req, res) => {
       societyId,
       visitorType,
       status,
-      dateTime: new Date(dateTime), // Convert to Date
+      dateTime: new Date(dateTime),
       description,
-      additionalDateTime: new Date(additionalDateTime), // Convert to Date
+      additionalDateTime: new Date(additionalDateTime),
       expirationDateTime,
       adminEmail,
-      email, // Store user's email
+      email,
     });
 
     await newEntry.save();
@@ -98,9 +98,8 @@ router.get("/", async (req, res) => {
     if (flatNumber) query.flatNumber = new RegExp(flatNumber, "i");
     if (date) query.dateTime = { $regex: date, $options: "i" };
     if (status) query.status = status;
-    if (userEmail) query.email = userEmail; // Filter by user's email
+    if (userEmail) query.email = userEmail;
     if (email) {
-      // Filter by adminEmail
       const adminFilter = await getAdminAndFilterEntries(email);
       query = { ...query, ...adminFilter };
     }
@@ -116,7 +115,20 @@ router.get("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const {
+      name,
+      flatNumber,
+      societyId,
+      visitorType,
+      status,
+      dateTime,
+      description,
+      additionalDateTime,
+      adminEmail,
+      email,
+    } = req.body;
+
+    // Validate status if provided
     if (status) {
       const validStatuses = ["pending", "allow", "deny"];
       if (!validStatuses.includes(status)) {
@@ -125,16 +137,39 @@ router.put("/:id", async (req, res) => {
           .json({
             error: "Invalid status value. Must be pending, allow, or deny",
           });
+      }
     }
+
+    // Prepare update object with all fields from the request
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (flatNumber) updateData.flatNumber = flatNumber;
+    if (societyId) updateData.societyId = societyId;
+    if (visitorType) updateData.visitorType = visitorType;
+    if (status) updateData.status = status;
+    if (dateTime) updateData.dateTime = new Date(dateTime);
+    if (description) updateData.description = description;
+    if (additionalDateTime) updateData.additionalDateTime = new Date(additionalDateTime);
+    if (adminEmail) updateData.adminEmail = adminEmail;
+    if (email) updateData.email = email;
+
+    // Recalculate expirationDateTime if dateTime is provided
+    if (dateTime) {
+      const expirationDateTime = new Date(dateTime);
+      expirationDateTime.setDate(expirationDateTime.getDate() + 7);
+      updateData.expirationDateTime = expirationDateTime;
     }
+
     const updatedEntry = await Entry.findByIdAndUpdate(
       id,
-      { status },
+      { $set: updateData },
       { new: true, runValidators: true }
     );
+
     if (!updatedEntry) {
       return res.status(404).json({ error: "Entry not found" });
     }
+
     res.status(200).json(updatedEntry);
   } catch (error) {
     res.status(500).json({ error: error.message });
