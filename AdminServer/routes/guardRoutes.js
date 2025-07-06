@@ -7,7 +7,7 @@ const mongoose = require("mongoose");
 const Guard = require("../models/SecurityGuard");
 
 // const Frontend_URL_Guard = "https://localhost:3000/"; // Change this to your frontend URL
-const Frontend_URL_Guard = "https://security-module-chi.vercel.app/"; // Change this to your frontend URL
+const Frontend_URL_Guard = "https://security-module-chi.vercel.app"; // Change this to your frontend URL
 
 // Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
