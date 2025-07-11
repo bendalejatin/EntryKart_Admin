@@ -1,35 +1,37 @@
 const express = require("express");
 const Entry = require("../models/Entry");
 const Admin = require("../models/Admin");
+const SecurityGuard = require("../models/SecurityGuard");
 const router = express.Router();
 const cron = require("node-cron");
 
-// Helper: Returns a filter based on the admin's role
-const getAdminAndFilterEntries = async (adminEmail) => {
-  if (!adminEmail) throw new Error("Admin email is required");
-  const admin = await Admin.findOne({ email: adminEmail });
-  if (!admin) throw new Error("Admin not found");
-  return admin.role === "superadmin" ? {} : { adminEmail };
+// Helper: Returns a filter based on the user's role
+const getUserAndFilterEntries = async (email) => {
+  if (!email) {
+    return {}; // Allow superadmin to fetch all entries
+  }
+
+  // Check Admin collection for superadmin
+  const admin = await Admin.findOne({ email });
+  if (admin && admin.role === "superadmin") {
+    return {}; // Superadmin can view all entries
+  }
+
+  // Check SecurityGuard collection
+  const guard = await SecurityGuard.findOne({ email });
+  if (!guard && !admin) throw new Error("User not found");
+  return { adminEmail: email }; // Guard or non-superadmin can view their own entries
 };
 
 // GET Entry Count
 router.get("/count", async (req, res) => {
   try {
-    const { email } = req.query;
-    if (!email) {
-      return res.status(400).json({ error: "Admin email is required" });
-    }
-
-    const admin = await Admin.findOne({ email });
-    let filter = {};
-    if (admin && admin.role !== "superadmin") {
-      filter = { adminEmail: email };
-    }
-
+    const filter = await getUserAndFilterEntries(req.query.email);
     const count = await Entry.countDocuments(filter);
     res.json({ count });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error fetching entry count:", error);
+    res.status(500).json({ message: error.message });
   }
 });
 
@@ -49,19 +51,14 @@ router.post("/", async (req, res) => {
       email,
     } = req.body;
 
-    if (!adminEmail || !societyId || !status) {
-      return res
-        .status(400)
-        .json({ error: "Admin email, society ID, and status are required" });
+    // Validate required fields
+    if (!adminEmail || !societyId || !name || !flatNumber || !visitorType || !status || !dateTime || !description || !additionalDateTime) {
+      return res.status(400).json({ message: "All required fields must be provided" });
     }
 
     const validStatuses = ["pending", "allow", "deny"];
     if (!validStatuses.includes(status)) {
-      return res
-        .status(400)
-        .json({
-          error: "Invalid status value. Must be pending, allow, or deny",
-        });
+      return res.status(400).json({ message: "Invalid status value. Must be 'pending', 'allow', or 'deny'" });
     }
 
     const expirationDateTime = new Date(dateTime);
@@ -84,11 +81,12 @@ router.post("/", async (req, res) => {
     await newEntry.save();
     res.status(201).json(newEntry);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error creating entry:", error);
+    res.status(500).json({ message: error.message });
   }
 });
 
-// Get All Entries (filtering by name, flatNumber, date, status, userEmail, and admin ownership)
+// Get All Entries
 router.get("/", async (req, res) => {
   try {
     const { name, flatNumber, date, status, email, userEmail } = req.query;
@@ -96,18 +94,19 @@ router.get("/", async (req, res) => {
 
     if (name) query.name = new RegExp(name, "i");
     if (flatNumber) query.flatNumber = new RegExp(flatNumber, "i");
-    if (date) query.dateTime = { $regex: date, $options: "i" };
+    if (date) query.dateTime = { $gte: new Date(date), $lte: new Date(new Date(date).setHours(23, 59, 59, 999)) };
     if (status) query.status = status;
     if (userEmail) query.email = userEmail;
     if (email) {
-      const adminFilter = await getAdminAndFilterEntries(email);
-      query = { ...query, ...adminFilter };
+      const userFilter = await getUserAndFilterEntries(email);
+      query = { ...query, ...userFilter };
     }
 
     const entries = await Entry.find(query).populate("societyId", "name");
     res.json(entries);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error fetching entries:", error);
+    res.status(500).json({ message: error.message });
   }
 });
 
@@ -132,15 +131,11 @@ router.put("/:id", async (req, res) => {
     if (status) {
       const validStatuses = ["pending", "allow", "deny"];
       if (!validStatuses.includes(status)) {
-        return res
-          .status(400)
-          .json({
-            error: "Invalid status value. Must be pending, allow, or deny",
-          });
+        return res.status(400).json({ message: "Invalid status value. Must be 'pending', 'allow', or 'deny'" });
       }
     }
 
-    // Prepare update object with all fields from the request
+    // Prepare update object
     const updateData = {};
     if (name) updateData.name = name;
     if (flatNumber) updateData.flatNumber = flatNumber;
@@ -167,12 +162,13 @@ router.put("/:id", async (req, res) => {
     );
 
     if (!updatedEntry) {
-      return res.status(404).json({ error: "Entry not found" });
+      return res.status(404).json({ message: "Entry not found" });
     }
 
-    res.status(200).json(updatedEntry);
+    res.json(updatedEntry);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error updating entry:", error);
+    res.status(500).json({ message: error.message });
   }
 });
 
@@ -181,11 +177,12 @@ router.delete("/:id", async (req, res) => {
   try {
     const deletedEntry = await Entry.findByIdAndDelete(req.params.id);
     if (!deletedEntry) {
-      return res.status(404).json({ error: "Entry not found" });
+      return res.status(404).json({ message: "Entry not found" });
     }
-    res.json({ message: "Entry deleted" });
+    res.json({ message: "Entry deleted successfully" });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error deleting entry:", error);
+    res.status(500).json({ message: error.message });
   }
 });
 
@@ -193,27 +190,31 @@ router.delete("/:id", async (req, res) => {
 cron.schedule("0 0 * * *", async () => {
   const now = new Date();
   await Entry.updateMany(
-    { expirationDateTime: { $lt: now } },
+    { expirationDateTime: { $lt: now }, expired: false },
     { expired: true }
   );
   console.log("Expired permissions updated");
 });
 
-// Get Expiring Soon Entries (notify 3 days before expiry)
+// Get Expiring Soon Entries
 router.get("/expiring-soon", async (req, res) => {
   try {
+    const { email } = req.query;
     const now = new Date();
     const upcomingExpiration = new Date();
     upcomingExpiration.setDate(now.getDate() + 3);
 
+    const filter = await getUserAndFilterEntries(email);
     const expiringEntries = await Entry.find({
+      ...filter,
       expirationDateTime: { $gte: now, $lte: upcomingExpiration },
       expired: false,
-    });
+    }).populate("societyId", "name");
 
     res.json(expiringEntries);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error fetching expiring entries:", error);
+    res.status(500).json({ message: error.message });
   }
 });
 

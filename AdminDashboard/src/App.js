@@ -22,9 +22,9 @@ import BroadcastMessage from "./components/BroadcastMessage";
 import FlatOwnerDetails from "./components/FlatOwnerDetails";
 import EntryPermissionForm from "./components/EntryPermissionForm";
 import Maintenance from "./components/Maintenance";
+import ServiceEntryManagement from "./components/ServiceEntryManagement"; // New component
 import "./App.css";
 
-// ✅ Protected Route Function
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("adminToken");
   return token ? children : <Navigate to="/admin/login" />;
@@ -39,31 +39,6 @@ const App = () => {
     setIsLoggedIn(!!token);
   }, []);
 
-  const [serverReady, setServerReady] = useState(false);
-
-  useEffect(() => {
-    const checkServer = async () => {
-      try {
-        const res = await fetch('https://dec-entrykart-backend.onrender.com/health');
-        if (res.ok) {
-          setServerReady(true);
-        }
-      } catch (err) {
-        console.log('Server not ready yet...');
-        setTimeout(checkServer, 2000); // retry every 2 seconds
-      }
-    };
-    checkServer();
-  }, []);
-
-  if (!serverReady) {
-    return (
-      <div style={{ textAlign: 'center', marginTop: '50px' }}>
-        <h2>Starting server... Please wait 🔥</h2>
-      </div>
-    );
-  }
-
   return (
     <Router>
       {isLoggedIn && (
@@ -76,103 +51,57 @@ const App = () => {
             {/* Auth Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin/signup" element={<AdminSignup />} />
-            <Route
-              path="/admin/forgot-password"
-              element={<AdminForgotPassword />}
-            />
-            <Route
-              path="/reset-password/:token"
-              element={<AdminResetPassword />}
-            />
+            <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
+            <Route path="/reset-password/:token" element={<AdminResetPassword />} />
 
             {/* Protected Routes */}
             <Route
               path="/"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
+              element={<ProtectedRoute><Dashboard /></ProtectedRoute>}
             />
             <Route
               path="/society"
-              element={
-                <ProtectedRoute>
-                  <SocietyManagement />
-                </ProtectedRoute>
-              }
+              element={<ProtectedRoute><SocietyManagement /></ProtectedRoute>}
             />
             <Route
               path="/users"
-              element={
-                <ProtectedRoute>
-                  <UserManagement />
-                </ProtectedRoute>
-              }
+              element={<ProtectedRoute><UserManagement /></ProtectedRoute>}
             />
             <Route
               path="/events"
-              element={
-                <ProtectedRoute>
-                  <EventManagement />
-                </ProtectedRoute>
-              }
+              element={<ProtectedRoute><EventManagement /></ProtectedRoute>}
             />
             <Route
               path="/coupons"
-              element={
-                <ProtectedRoute>
-                  <CouponManagement />
-                </ProtectedRoute>
-              }
+              element={<ProtectedRoute><CouponManagement /></ProtectedRoute>}
             />
             <Route
               path="/qrscanner"
-              element={
-                <ProtectedRoute>
-                  <QRScanner />
-                </ProtectedRoute>
-              }
+              element={<ProtectedRoute><QRScanner /></ProtectedRoute>}
             />
             <Route
               path="/profile"
-              element={
-                <ProtectedRoute>
-                  <AdminProfile />
-                </ProtectedRoute>
-              }
+              element={<ProtectedRoute><AdminProfile /></ProtectedRoute>}
             />
             <Route
               path="/broadcast"
-              element={
-                <ProtectedRoute>
-                  <BroadcastMessage />
-                </ProtectedRoute>
-              }
+              element={<ProtectedRoute><BroadcastMessage /></ProtectedRoute>}
             />
             <Route
               path="/flat-owner"
-              element={
-                <ProtectedRoute>
-                  <FlatOwnerDetails />
-                </ProtectedRoute>
-              }
+              element={<ProtectedRoute><FlatOwnerDetails /></ProtectedRoute>}
             />
             <Route
               path="/entry-permission"
-              element={
-                <ProtectedRoute>
-                  <EntryPermissionForm />
-                </ProtectedRoute>
-              }
+              element={<ProtectedRoute><EntryPermissionForm /></ProtectedRoute>}
             />
             <Route
               path="/maintenance"
-              element={
-                <ProtectedRoute>
-                  <Maintenance />
-                </ProtectedRoute>
-              }
+              element={<ProtectedRoute><Maintenance /></ProtectedRoute>}
+            />
+            <Route
+              path="/service-entries"
+              element={<ProtectedRoute><ServiceEntryManagement /></ProtectedRoute>} // New route
             />
 
             {/* Catch-all Route */}

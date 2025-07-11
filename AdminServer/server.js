@@ -15,13 +15,14 @@ const flatOwnerRoutes = require("./routes/flatOwnerRoutes");
 const entryRoutes = require("./routes/entryRoutes");
 const maintenanceRoutes = require("./routes/maintenanceRoutes");
 const guardRoutes = require("./routes/guardRoutes");
+const serviceEntryRoutes = require("./routes/serviceEntryRoutes"); // Add new route
 const Admin = require("./models/Admin");
 
 const app = express();
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json({ limit: "5mb" })); // Increased limit for large base64 images
+app.use(bodyParser.json({ limit: "5mb" }));
 app.use(express.json());
 
 // Routes
@@ -35,23 +36,26 @@ app.use("/api/flats", flatOwnerRoutes);
 app.use("/api/entries", entryRoutes);
 app.use("/api/maintenance", maintenanceRoutes);
 app.use("/api/guard", guardRoutes);
+app.use("/api/service-entries", serviceEntryRoutes); // Add new route
 
-// In server.js or app.js
+// Health check
 app.get('/health', (req, res) => {
   res.status(200).send('Server is healthy');
 });
 
+// 404 handler
 app.use((req, res) => {
   res.status(404).send("Route not found");
 });
 
+// Cache control
 app.use((req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
 });
 
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/EKDD";
+const MONGO_URI = "mongodb://localhost:27017/EKDD";
 
 // Connect to MongoDB
 mongoose

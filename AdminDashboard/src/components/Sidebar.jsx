@@ -12,6 +12,7 @@ const menuItems = [
   { path: "/flat-owner", icon: "🧾", label: "Flat Owner Management" },
   { path: "/entry-permission", icon: "🚪", label: "Entry Permission" },
   { path: "/maintenance", icon: "💸", label: "Maintenance" },
+  { path: "/service-entries", icon: "📰", label: "Service Entries" }, // New menu item
   { path: "/profile", icon: "👤", label: "Profile" },
 ];
 

@@ -4,7 +4,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "../components/styles/EntryPermissionForm.css";
 
-//const BASE_URL = "http://localhost:5000"; // Adjust this to your backend URL
+// const BASE_URL = "http://localhost:5000"; // Adjust this to your backend URL
 const BASE_URL = "https://dec-entrykart-backend.onrender.com" ; // deployment url
 
 const EntryPermissionForm = () => {
@@ -200,7 +200,7 @@ const EntryPermissionForm = () => {
   return (
     <div className="container">
       <h2 className="title">Entry Permission Form</h2>
-      <div className="form-group">
+      {/* <div className="form-group">
         <h3>Name:</h3>
         <input
           type="text"
@@ -314,7 +314,7 @@ const EntryPermissionForm = () => {
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         className="input-field"
-      />
+      /> */}
       <div className="entries-list">
         {filteredEntries.map((entry) => (
           <div key={entry._id} className="entry">
