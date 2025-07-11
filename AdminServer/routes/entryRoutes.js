@@ -2,31 +2,49 @@ const express = require("express");
 const Entry = require("../models/Entry");
 const Admin = require("../models/Admin");
 const SecurityGuard = require("../models/SecurityGuard");
+const Society = require("../models/Society");
 const router = express.Router();
 const cron = require("node-cron");
 
-// Helper: Returns a filter based on the user's role
+// Helper: Returns a filter based on the user's role and associated societies
 const getUserAndFilterEntries = async (email) => {
+  console.log("getUserAndFilterEntries called with email:", email); // Debug log
   if (!email) {
-    return {}; // Allow superadmin to fetch all entries
+    console.log("No email provided, returning empty filter for superadmin");
+    return {};
   }
 
   // Check Admin collection for superadmin
   const admin = await Admin.findOne({ email });
   if (admin && admin.role === "superadmin") {
-    return {}; // Superadmin can view all entries
+    console.log("Superadmin found, returning empty filter");
+    return {};
   }
 
   // Check SecurityGuard collection
   const guard = await SecurityGuard.findOne({ email });
-  if (!guard && !admin) throw new Error("User not found");
-  return { adminEmail: email }; // Guard or non-superadmin can view their own entries
+  if (!guard && !admin) {
+    console.error("User not found for email:", email);
+    throw new Error("User not found");
+  }
+
+  if (guard) {
+    console.log("Security guard found, returning empty filter to view all entries");
+    return {};
+  }
+
+  // For non-superadmins, filter by societies they manage
+  const societies = await Society.find({ adminEmail: email }).select('_id');
+  const societyIds = societies.map(s => s._id);
+  console.log("Societies managed by admin:", societyIds);
+  return { societyId: { $in: societyIds } };
 };
 
 // GET Entry Count
 router.get("/count", async (req, res) => {
   try {
     const filter = await getUserAndFilterEntries(req.query.email);
+    console.log("Fetching entry count with filter:", filter);
     const count = await Entry.countDocuments(filter);
     res.json({ count });
   } catch (error) {
@@ -51,14 +69,25 @@ router.post("/", async (req, res) => {
       email,
     } = req.body;
 
+    console.log("Creating entry with payload:", req.body); // Debug log
+
     // Validate required fields
     if (!adminEmail || !societyId || !name || !flatNumber || !visitorType || !status || !dateTime || !description || !additionalDateTime) {
+      console.error("Missing required fields:", req.body);
       return res.status(400).json({ message: "All required fields must be provided" });
     }
 
-    const validStatuses = ["pending", "allow", "deny"];
+    const validStatuses = ["pending", "allow", "deny", "checked-in", "checked-out"];
     if (!validStatuses.includes(status)) {
-      return res.status(400).json({ message: "Invalid status value. Must be 'pending', 'allow', or 'deny'" });
+      console.error("Invalid status value:", status);
+      return res.status(400).json({ message: "Invalid status value. Must be 'pending', 'allow', 'deny', 'checked-in', or 'checked-out'" });
+    }
+
+    // Fetch society to get the associated adminEmail
+    const society = await Society.findById(societyId);
+    if (!society) {
+      console.error("Society not found for ID:", societyId);
+      return res.status(404).json({ message: "Society not found" });
     }
 
     const expirationDateTime = new Date(dateTime);
@@ -74,12 +103,13 @@ router.post("/", async (req, res) => {
       description,
       additionalDateTime: new Date(additionalDateTime),
       expirationDateTime,
-      adminEmail,
+      adminEmail: society.adminEmail,
       email,
     });
 
-    await newEntry.save();
-    res.status(201).json(newEntry);
+    const savedEntry = await newEntry.save();
+    console.log("Entry saved successfully:", savedEntry); // Debug log
+    res.status(201).json(savedEntry);
   } catch (error) {
     console.error("Error creating entry:", error);
     res.status(500).json({ message: error.message });
@@ -102,7 +132,9 @@ router.get("/", async (req, res) => {
       query = { ...query, ...userFilter };
     }
 
+    console.log("Fetching entries with query:", query); // Debug log
     const entries = await Entry.find(query).populate("societyId", "name");
+    console.log("Fetched entries:", entries); // Debug log
     res.json(entries);
   } catch (error) {
     console.error("Error fetching entries:", error);
@@ -127,12 +159,26 @@ router.put("/:id", async (req, res) => {
       email,
     } = req.body;
 
+    console.log("Updating entry with ID:", id, "Payload:", req.body); // Debug log
+
     // Validate status if provided
     if (status) {
-      const validStatuses = ["pending", "allow", "deny"];
+      const validStatuses = ["pending", "allow", "deny", "checked-in", "checked-out"];
       if (!validStatuses.includes(status)) {
-        return res.status(400).json({ message: "Invalid status value. Must be 'pending', 'allow', or 'deny'" });
+        console.error("Invalid status value:", status);
+        return res.status(400).json({ message: "Invalid status value. Must be 'pending', 'allow', 'deny', 'checked-in', or 'checked-out'" });
       }
+    }
+
+    // Fetch society to get the associated adminEmail
+    let updatedAdminEmail = adminEmail;
+    if (societyId) {
+      const society = await Society.findById(societyId);
+      if (!society) {
+        console.error("Society not found for ID:", societyId);
+        return res.status(404).json({ message: "Society not found" });
+      }
+      updatedAdminEmail = society.adminEmail;
     }
 
     // Prepare update object
@@ -145,10 +191,10 @@ router.put("/:id", async (req, res) => {
     if (dateTime) updateData.dateTime = new Date(dateTime);
     if (description) updateData.description = description;
     if (additionalDateTime) updateData.additionalDateTime = new Date(additionalDateTime);
-    if (adminEmail) updateData.adminEmail = adminEmail;
+    if (updatedAdminEmail) updateData.adminEmail = updatedAdminEmail;
     if (email) updateData.email = email;
 
-    // Recalculate expirationDateTime if dateTime is provided
+    // Recalculate expirationDateTime
     if (dateTime) {
       const expirationDateTime = new Date(dateTime);
       expirationDateTime.setDate(expirationDateTime.getDate() + 7);
@@ -162,9 +208,11 @@ router.put("/:id", async (req, res) => {
     );
 
     if (!updatedEntry) {
+      console.error("Entry not found for ID:", id);
       return res.status(404).json({ message: "Entry not found" });
     }
 
+    console.log("Entry updated successfully:", updatedEntry); // Debug log
     res.json(updatedEntry);
   } catch (error) {
     console.error("Error updating entry:", error);
@@ -175,10 +223,13 @@ router.put("/:id", async (req, res) => {
 // Delete Entry
 router.delete("/:id", async (req, res) => {
   try {
+    console.log("Deleting entry with ID:", req.params.id); // Debug log
     const deletedEntry = await Entry.findByIdAndDelete(req.params.id);
     if (!deletedEntry) {
+      console.error("Entry not found for ID:", req.params.id);
       return res.status(404).json({ message: "Entry not found" });
     }
+    console.log("Entry deleted successfully:", deletedEntry); // Debug log
     res.json({ message: "Entry deleted successfully" });
   } catch (error) {
     console.error("Error deleting entry:", error);
@@ -205,12 +256,14 @@ router.get("/expiring-soon", async (req, res) => {
     upcomingExpiration.setDate(now.getDate() + 3);
 
     const filter = await getUserAndFilterEntries(email);
+    console.log("Fetching expiring entries with filter:", filter); // Debug log
     const expiringEntries = await Entry.find({
       ...filter,
       expirationDateTime: { $gte: now, $lte: upcomingExpiration },
       expired: false,
     }).populate("societyId", "name");
 
+    console.log("Expiring entries:", expiringEntries); // Debug log
     res.json(expiringEntries);
   } catch (error) {
     console.error("Error fetching expiring entries:", error);

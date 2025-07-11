@@ -2,9 +2,10 @@ const express = require("express");
 const ServiceEntry = require("../models/ServiceEntry");
 const Admin = require("../models/Admin");
 const SecurityGuard = require("../models/SecurityGuard");
+const Society = require("../models/Society");
 const router = express.Router();
 
-// Helper: Returns a filter based on the user's role
+// Helper: Returns a filter based on the user's role and associated societies
 const getUserAndFilterEntries = async (adminEmail) => {
   if (!adminEmail) {
     return {}; // Allow superadmin to fetch all entries
@@ -19,7 +20,11 @@ const getUserAndFilterEntries = async (adminEmail) => {
   // Check SecurityGuard collection
   const guard = await SecurityGuard.findOne({ email: adminEmail });
   if (!guard && !admin) throw new Error("User not found");
-  return { adminEmail }; // Guard or non-superadmin can view their own entries
+
+  // For non-superadmins, filter by societies they manage
+  const societies = await Society.find({ adminEmail }).select('_id');
+  const societyIds = societies.map(s => s._id);
+  return { societyId: { $in: societyIds } }; // Filter entries by societyId
 };
 
 // Create Service Entry
@@ -46,6 +51,12 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ message: "Invalid status value. Must be 'checked-in', 'checked-out', or 'pending'" });
     }
 
+    // Fetch society to get the associated adminEmail
+    const society = await Society.findById(societyId);
+    if (!society) {
+      return res.status(404).json({ message: "Society not found" });
+    }
+
     const newEntry = new ServiceEntry({
       name,
       phoneNumber,
@@ -53,7 +64,7 @@ router.post("/", async (req, res) => {
       photo,
       visitorType,
       description,
-      adminEmail,
+      adminEmail: society.adminEmail, // Use society's adminEmail
       status: status || "pending",
       checkInTime: status === "checked-in" ? new Date() : null,
     });
@@ -93,7 +104,7 @@ router.get("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, ...updateData } = req.body;
+    const { status, societyId, ...updateData } = req.body;
 
     // Validate status if provided
     if (status) {
@@ -103,10 +114,21 @@ router.put("/:id", async (req, res) => {
       }
     }
 
+    // Fetch society to get the associated adminEmail if societyId is provided
+    let updatedAdminEmail = updateData.adminEmail;
+    if (societyId) {
+      const society = await Society.findById(societyId);
+      if (!society) {
+        return res.status(404).json({ message: "Society not found" });
+      }
+      updatedAdminEmail = society.adminEmail;
+    }
+
     const updateFields = { ...updateData };
     if (status === "checked-in") updateFields.checkInTime = new Date();
     if (status === "checked-out") updateFields.checkOutTime = new Date();
     if (status) updateFields.status = status;
+    if (updatedAdminEmail) updateFields.adminEmail = updatedAdminEmail;
 
     const updatedEntry = await ServiceEntry.findByIdAndUpdate(
       id,

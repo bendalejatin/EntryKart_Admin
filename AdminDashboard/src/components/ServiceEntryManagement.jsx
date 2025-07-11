@@ -23,18 +23,27 @@ const ServiceEntryManagement = () => {
     fetchEntries();
   }, [adminEmail]);
 
-  const fetchEntries = async () => {
+  const fetchEntries = async (retryCount = 3) => {
     try {
       const response = await axios.get(
         `${BASE_URL}/api/service-entries?adminEmail=${adminEmail}`,
         { headers: { "Cache-Control": "no-cache" } }
       );
-      setEntries(response.data);
-      setLoading(false);
+      setEntries(response.data || []);
+      if (response.data.length === 0) {
+        setError("No service entries found.");
+      }
     } catch (error) {
-      setError("Failed to fetch service entries.");
+      console.error("Error fetching service entries:", error);
+      if (retryCount > 0) {
+        console.log(`Retrying fetchEntries... (${retryCount} attempts left)`);
+        setTimeout(() => fetchEntries(retryCount - 1), 2000);
+      } else {
+        setError("Failed to fetch service entries. Please check your connection.");
+        toast.error("Failed to fetch service entries.");
+      }
+    } finally {
       setLoading(false);
-      toast.error("Failed to fetch service entries");
     }
   };
 

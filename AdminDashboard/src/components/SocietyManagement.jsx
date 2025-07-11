@@ -10,30 +10,50 @@ const SocietyManagement = () => {
   const [newSociety, setNewSociety] = useState({
     name: "",
     location: "",
-    societyType: "", // No default selection
+    societyType: "",
     blocks: "",
     flatsPerFloor: "",
     floorsPerBlock: "",
     totalHouses: "",
   });
   const [editingSociety, setEditingSociety] = useState(null);
-  const [expandedFlats, setExpandedFlats] = useState({}); // Track which societies' flats are expanded
+  const [expandedFlats, setExpandedFlats] = useState({});
 
   useEffect(() => {
     fetchSocieties();
   }, []);
 
-  // Fetch societies filtered by adminEmail
   const fetchSocieties = async () => {
     try {
       const adminEmail = localStorage.getItem("adminEmail");
+      if (!adminEmail) {
+        alert("Admin email is missing. Please log in again.");
+        return;
+      }
       const response = await axios.get(
-        `${BASE_URL}/api/societies?email=${adminEmail}`
+        `${BASE_URL}/api/societies?email=${adminEmail}`,
+        { headers: { "Cache-Control": "no-cache" } }
       );
-      setSocieties(response.data);
+      console.log("Fetched societies:", response.data); // Debug log
+      setSocieties(response.data || []);
+      if (response.data.length === 0) {
+        alert("No societies found for this admin.");
+      }
     } catch (error) {
-      console.error("Error fetching societies:", error);
-      alert(`❌ Error fetching societies: ${error.message}`);
+      console.error("Error fetching societies:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      let errorMessage = "Failed to fetch societies. Please check your connection or contact the server admin.";
+      if (error.response?.status === 401) {
+        errorMessage = "Unauthorized access. Please verify your admin login credentials.";
+      } else if (error.response?.status === 404) {
+        errorMessage = "No societies available. Please add a society.";
+      } else if (error.response?.status === 500) {
+        errorMessage = "Server error. Please contact the server admin.";
+      }
+      alert(`❌ ${errorMessage}`);
     }
   };
 
@@ -41,7 +61,6 @@ const SocietyManagement = () => {
     setNewSociety({ ...newSociety, [e.target.name]: e.target.value });
   };
 
-  // Create or update society
   const addSociety = async () => {
     if (!newSociety.name || !newSociety.location || !newSociety.societyType) {
       alert("Please fill name, location, and society type.");
@@ -102,7 +121,11 @@ const SocietyManagement = () => {
       fetchSocieties();
       resetForm();
     } catch (error) {
-      console.error("Error saving society:", error);
+      console.error("Error saving society:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       alert(
         `❌ Failed to save society: ${
           error.response?.data?.message || error.message
@@ -111,7 +134,6 @@ const SocietyManagement = () => {
     }
   };
 
-  // Delete society by id
   const handleDeleteSociety = async (id) => {
     console.log("Deleting society with id:", id);
     const confirmDelete = window.confirm(
@@ -123,7 +145,11 @@ const SocietyManagement = () => {
       setSocieties((prev) => prev.filter((society) => society._id !== id));
       alert("✅ Society deleted successfully!");
     } catch (error) {
-      console.error("Error deleting society:", error);
+      console.error("Error deleting society:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       alert(
         `❌ Error deleting society: ${
           error.response?.data?.message || error.message
@@ -158,7 +184,6 @@ const SocietyManagement = () => {
     setEditingSociety(null);
   };
 
-  // Toggle flats display for a society
   const toggleFlats = (societyId) => {
     setExpandedFlats((prev) => ({
       ...prev,
@@ -239,7 +264,7 @@ const SocietyManagement = () => {
             const isExpanded = expandedFlats[society._id];
             const displayedFlats = isExpanded
               ? society.flats
-              : society.flats.slice(0, 5); // Show first 5 flats by default
+              : society.flats.slice(0, 5);
             return (
               <div key={society._id} className="society-card">
                 <h3><strong>Society:</strong> {society.name}</h3>
