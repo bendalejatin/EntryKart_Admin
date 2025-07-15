@@ -5,7 +5,7 @@ import "react-toastify/dist/ReactToastify.css";
 import "./styles/ServiceEntryManagement.css";
 
 //const BASE_URL = "http://localhost:5000"; // Adjust this to your backend URL
-const BASE_URL = "https://dec-entrykart-backend.onrender.com" ; // deployment url
+const BASE_URL = "https://entrykart-admin.onrender.com" ; // deployment url
 
 const ServiceEntryManagement = () => {
   const [entries, setEntries] = useState([]);
