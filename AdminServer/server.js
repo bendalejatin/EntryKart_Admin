@@ -55,7 +55,7 @@ app.use((req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = "mongodb://localhost:27017/EKDD";
+const MONGO_URI = "mongodb+srv://jatinbendale17:EhX4qk9HoMRKgrCg@cluster0.ru841.mongodb.net/EntryKart";
 
 // Connect to MongoDB
 mongoose
