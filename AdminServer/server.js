@@ -15,16 +15,30 @@ const flatOwnerRoutes = require("./routes/flatOwnerRoutes");
 const entryRoutes = require("./routes/entryRoutes");
 const maintenanceRoutes = require("./routes/maintenanceRoutes");
 const guardRoutes = require("./routes/guardRoutes");
-const serviceEntryRoutes = require("./routes/serviceEntryRoutes"); 
+const serviceEntryRoutes = require("./routes/serviceEntryRoutes");
 const vehicleRoutes = require("./routes/vehicleRoutes");
 const Admin = require("./models/Admin");
 
 const app = express();
 
+// CORS configuration
+const corsOptions = {
+  origin: "https://entrykart-user-module.vercel.app",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // Handle preflight requests
+
 // Middleware
-app.use(cors());
 app.use(bodyParser.json({ limit: "5mb" }));
 app.use(express.json());
+app.use((req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
 
 // Routes
 app.use("/api/societies", societyRoutes);
@@ -37,23 +51,22 @@ app.use("/api/flats", flatOwnerRoutes);
 app.use("/api/entries", entryRoutes);
 app.use("/api/maintenance", maintenanceRoutes);
 app.use("/api/guard", guardRoutes);
-app.use("/api/service-entries", serviceEntryRoutes); 
+app.use("/api/service-entries", serviceEntryRoutes);
 app.use("/api/vehicles", vehicleRoutes);
 
 // Health check
-app.get('/health', (req, res) => {
-  res.status(200).send('Server is healthy');
+app.get("/health", (req, res) => {
+  res.status(200).send("Server is healthy");
+});
+
+// Default route
+app.get("/", (req, res) => {
+  res.send("API is running...");
 });
 
 // 404 handler
 app.use((req, res) => {
   res.status(404).send("Route not found");
-});
-
-// Cache control
-app.use((req, res, next) => {
-  res.set("Cache-Control", "no-store");
-  next();
 });
 
 const PORT = process.env.PORT || 5000;
@@ -90,11 +103,6 @@ async function createSuperAdmin() {
     console.error("❌ Error creating Superadmin:", error);
   }
 }
-
-// Default route
-app.get("/", (req, res) => {
-  res.send("API is running...");
-});
 
 // Start server
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
