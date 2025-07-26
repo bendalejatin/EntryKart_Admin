@@ -22,16 +22,15 @@ const Admin = require("./models/Admin");
 const app = express();
 
 // CORS configuration
-app.use(cors({
-  origin: "*",
+const corsOptions = {
+  origin: "https://entrykart-user-module.vercel.app",
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true, // Note: credentials cannot be used with origin: "*"
-}));
-app.options("*", cors());
+  credentials: true,
+};
 
-// app.use(cors(corsOptions));
-// app.options("*", cors(corsOptions)); // Handle preflight requests
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // Handle preflight requests
 
 // Middleware
 app.use(bodyParser.json({ limit: "5mb" }));
