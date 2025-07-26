@@ -15,7 +15,8 @@ const flatOwnerRoutes = require("./routes/flatOwnerRoutes");
 const entryRoutes = require("./routes/entryRoutes");
 const maintenanceRoutes = require("./routes/maintenanceRoutes");
 const guardRoutes = require("./routes/guardRoutes");
-const serviceEntryRoutes = require("./routes/serviceEntryRoutes"); // Add new route
+const serviceEntryRoutes = require("./routes/serviceEntryRoutes"); 
+const vehicleRoutes = require("./routes/vehicleRoutes");
 const Admin = require("./models/Admin");
 
 const app = express();
@@ -36,7 +37,8 @@ app.use("/api/flats", flatOwnerRoutes);
 app.use("/api/entries", entryRoutes);
 app.use("/api/maintenance", maintenanceRoutes);
 app.use("/api/guard", guardRoutes);
-app.use("/api/service-entries", serviceEntryRoutes); // Add new route
+app.use("/api/service-entries", serviceEntryRoutes); 
+app.use("/api/vehicles", vehicleRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
