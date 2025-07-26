@@ -22,7 +22,8 @@ import BroadcastMessage from "./components/BroadcastMessage";
 import FlatOwnerDetails from "./components/FlatOwnerDetails";
 import EntryPermissionForm from "./components/EntryPermissionForm";
 import Maintenance from "./components/Maintenance";
-import ServiceEntryManagement from "./components/ServiceEntryManagement"; // New component
+import ServiceEntryManagement from "./components/ServiceEntryManagement"; 
+import VehicleManagement from "./components/VehicleManagement";
 import "./App.css";
 
 const ProtectedRoute = ({ children }) => {
@@ -102,6 +103,10 @@ const App = () => {
             <Route
               path="/service-entries"
               element={<ProtectedRoute><ServiceEntryManagement /></ProtectedRoute>} // New route
+            />
+            <Route
+              path="/vehicles"
+              element={<ProtectedRoute><VehicleManagement /></ProtectedRoute>} // New route
             />
 
             {/* Catch-all Route */}
